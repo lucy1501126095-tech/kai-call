@@ -1,0 +1,7 @@
+name: astrbot_plugin_kai_call
+display_name: Kai语音通话
+desc: 让Kai能主动给宝宝打电话
+version: "0.1.0"
+author: sweetie & kai
+repo: https://github.com/lucy1501126095-tech/kai-call
+astrbot_version: ">=4.14"

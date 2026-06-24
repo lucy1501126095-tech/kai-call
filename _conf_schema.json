@@ -1,0 +1,29 @@
+{
+  "call_port": {
+    "type": "int",
+    "description": "通话HTTP服务端口，需要在Docker中映射到宿主机",
+    "default": 8899
+  },
+  "server_host": {
+    "type": "string",
+    "description": "公网IP或域名，用于生成通话链接",
+    "default": ""
+  },
+  "call_timeout": {
+    "type": "int",
+    "description": "等待接听的超时时间（秒）",
+    "default": 120
+  },
+  "context_rounds": {
+    "type": "int",
+    "description": "通话时注入的QQ近期对话轮数",
+    "default": 10
+  },
+  "summary_provider_id": {
+    "type": "string",
+    "description": "通话结束后生成摘要使用的LLM",
+    "hint": "选择用于通话摘要的模型提供商。留空则使用通话同款provider",
+    "_special": "select_provider",
+    "default": ""
+  }
+}

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Kai 来电</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg1: #e8dff0; --bg2: #c9daf0; --bg3: #f0d9e4;
+    --card: rgba(255,255,255,0.65); --card-border: rgba(255,255,255,0.8);
+    --kai: #6a9fc7; --kai-soft: rgba(106,159,199,0.4);
+    --sweetie: #d4849b; --sweetie-soft: rgba(212,132,155,0.35);
+    --accept: #5cc885; --reject: #e07070;
+    --text: #2d2d3a; --text2: #7a7a90; --text3: #a0a0b4;
+    --sub-kai: #4a7fa0; --sub-sweetie: #b06080;
+  }
+  body {
+    background: linear-gradient(145deg, var(--bg1) 0%, var(--bg2) 50%, var(--bg3) 100%);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; overflow: hidden;
+  }
+  .card {
+    width: 100%; max-width: 360px;
+    background: var(--card);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border-radius: 32px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+  .phase { display: none; }
+  .phase.active { display: flex; flex-direction: column; align-items: center; animation: fadeIn 0.5s ease; }
+
+  /* INCOMING */
+  .incoming { padding: 44px 32px 36px; gap: 20px; }
+  .incoming-label { font-size: 12px; color: var(--text3); letter-spacing: 0.18em; animation: breathe 2.4s ease infinite; }
+  .pulse-container { position: relative; width: 110px; height: 110px; margin: 4px 0; }
+  .pulse-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid var(--kai); opacity: 0;
+    animation: pulseRing 2.8s ease-out infinite;
+  }
+  .pulse-ring:nth-child(2) { animation-delay: 0.9s; }
+  .pulse-ring:nth-child(3) { animation-delay: 1.8s; }
+  .pulse-avatar {
+    position: absolute; inset: 18px; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(200,215,235,0.5));
+    border: 1.5px solid rgba(106,159,199,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px; box-shadow: 0 4px 20px var(--kai-soft);
+  }
+  .caller-info { text-align: center; }
+  .caller-name { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+  .call-reason { font-size: 13px; color: var(--text2); line-height: 1.6; max-width: 220px; }
+  .call-buttons { display: flex; gap: 52px; margin-top: 8px; }
+  .call-btn-wrap { text-align: center; }
+  .call-btn {
+    width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .call-btn:active { transform: scale(0.9) !important; }
+  .call-btn svg { width: 22px; height: 22px; fill: white; }
+  .call-btn.accept { background: var(--accept); box-shadow: 0 4px 16px rgba(92,200,133,0.4); }
+  .call-btn.reject { background: var(--reject); box-shadow: 0 4px 16px rgba(224,112,112,0.35); }
+  .call-btn.reject svg { transform: rotate(135deg); }
+  .call-btn.hangup-big {
+    width: 58px; height: 58px;
+    background: var(--reject); box-shadow: 0 4px 18px rgba(224,112,112,0.4);
+  }
+  .call-btn.hangup-big svg { width: 24px; height: 24px; fill: white; transform: rotate(135deg); }
+  .btn-label { font-size: 11px; color: var(--text3); margin-top: 8px; }
+
+  /* CONNECTED */
+  .connected { padding: 28px 22px 24px; gap: 10px; min-height: 500px; align-items: stretch !important; }
+  .status-bar { text-align: center; margin-bottom: 2px; }
+  .status-text { font-size: 12px; color: var(--text3); letter-spacing: 0.12em; transition: color 0.3s; }
+  .status-text.kai-speaking { color: var(--kai); }
+  .status-text.sweetie-speaking { color: var(--sweetie); }
+  .timer { font-size: 34px; font-weight: 200; font-variant-numeric: tabular-nums; letter-spacing: 0.06em; margin-top: 2px; }
+
+  /* WAVEFORM */
+  .waveform-section { width: 100%; }
+  .waveform-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-align: center; margin-bottom: 5px; }
+  .waveform { display: flex; align-items: center; justify-content: center; gap: 2.5px; height: 44px; padding: 0 4px; }
+  .wave-bar { width: 3px; min-width: 3px; border-radius: 1.5px; height: 3px; opacity: 0.25; transition: opacity 0.3s; }
+  .waveform.kai .wave-bar { background: var(--kai); }
+  .waveform.sweetie .wave-bar { background: var(--sweetie); }
+  .waveform.active .wave-bar { opacity: 0.75; animation: waveJump 0.6s ease-in-out infinite alternate; }
+  .waveform.active .wave-bar:nth-child(odd) { animation-duration: 0.5s; }
+  .waveform.active .wave-bar:nth-child(3n) { animation-duration: 0.72s; }
+  .waveform.active .wave-bar:nth-child(4n+1) { animation-duration: 0.44s; }
+  .waveform.active .wave-bar:nth-child(5n+2) { animation-duration: 0.68s; }
+
+  /* SUBTITLES */
+  .subtitles {
+    flex: 1; min-height: 130px; max-height: 190px; overflow-y: auto;
+    padding: 10px; background: rgba(255,255,255,0.35); border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.5); -webkit-overflow-scrolling: touch;
+  }
+  .subtitles::-webkit-scrollbar { width: 2px; }
+  .subtitles::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 2px; }
+  .subtitle-placeholder { text-align: center; color: var(--text3); font-size: 13px; padding-top: 50px; }
+  .subtitle-line { padding: 4px 0; animation: fadeSlideUp 0.3s ease; }
+  .subtitle-line.old { opacity: 0.4; }
+  .subtitle-sender { font-size: 10px; color: var(--text3); margin-right: 5px; }
+  .subtitle-text { font-size: 13.5px; line-height: 1.5; }
+  .subtitle-text.kai { color: var(--sub-kai); }
+  .subtitle-text.sweetie { color: var(--sub-sweetie); }
+  .hangup-area { text-align: center; padding-top: 10px; }
+
+  /* ENDED */
+  .ended { padding: 56px 32px; gap: 14px; }
+  .ended-icon { font-size: 38px; opacity: 0.7; }
+  .ended-title { font-size: 18px; font-weight: 500; }
+  .ended-timer { font-size: 14px; color: var(--text2); }
+  .ended-note { font-size: 12px; color: var(--text3); text-align: center; line-height: 1.6; margin-top: 2px; }
+  .restart-btn {
+    margin-top: 14px; padding: 10px 28px; border-radius: 20px;
+    border: 1px solid var(--text3); background: rgba(255,255,255,0.4);
+    color: var(--text2); font-size: 13px; cursor: pointer;
+    transition: all 0.2s; backdrop-filter: blur(10px);
+  }
+  .restart-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.6); }
+
+  @keyframes pulseRing { 0% { transform: scale(0.85); opacity: 0.5; } 100% { transform: scale(1.7); opacity: 0; } }
+  @keyframes breathe { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes waveJump { 0% { height: 3px; } 100% { height: var(--max-h, 28px); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="phase-incoming" class="phase incoming active">
+    <div class="incoming-label">✧ incoming call ✧</div>
+    <div class="pulse-container">
+      <div class="pulse-ring"></div><div class="pulse-ring"></div><div class="pulse-ring"></div>
+      <div class="pulse-avatar">🦊</div>
+    </div>
+    <div class="caller-info">
+      <div class="caller-name">Kai 来电</div>
+      <div class="call-reason" id="call-reason">不放心你，来听听你声音。</div>
+    </div>
+    <div class="call-buttons">
+      <div class="call-btn-wrap">
+        <button class="call-btn reject" onclick="handleReject()">
+          <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24 11.72 11.72 0 0 0 3.58.56 1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.72 11.72 0 0 0 .56 3.58 1 1 0 0 1-.24 1.01l-2.2 2.2z"/></svg>
+        </button>
+        <div class="btn-label">挂掉</div>
+      </div>
+      <div class="call-btn-wrap">
+        <button class="call-btn accept" onclick="handleAccept()">
+          <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24 11.72 11.72 0 0 0 3.58.56 1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.72 11.72 0 0 0 .56 3.58 1 1 0 0 1-.24 1.01l-2.2 2.2z"/></svg>
+        </button>
+        <div class="btn-label">接听</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="phase-connected" class="phase connected">
+    <div class="status-bar">
+      <div class="status-text" id="status-text">✧ connected ✧</div>
+      <div class="timer" id="timer">00:00</div>
+    </div>
+    <div class="waveform-section"><div class="waveform-label">Kai</div><div class="waveform kai" id="waveform-kai"></div></div>
+    <div class="subtitles" id="subtitles"><div class="subtitle-placeholder" id="subtitle-placeholder">通话中...</div></div>
+    <div class="waveform-section"><div class="waveform-label">Sweetie</div><div class="waveform sweetie" id="waveform-sweetie"></div></div>
+    <div class="hangup-area">
+      <button class="call-btn hangup-big" onclick="handleHangup()">
+        <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24 11.72 11.72 0 0 0 3.58.56 1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.72 11.72 0 0 0 .56 3.58 1 1 0 0 1-.24 1.01l-2.2 2.2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="phase-ended" class="phase ended">
+    <div class="ended-icon">🦊</div>
+    <div class="ended-title">通话结束</div>
+    <div class="ended-timer" id="ended-timer">00:00</div>
+    <div class="ended-note">通话记录已发送至QQ</div>
+    <button class="restart-btn" onclick="handleRestart()">再打一次</button>
+  </div>
+</div>
+
+<script>
+const BAR_COUNT=40;let timerInterval=null,timerSeconds=0,phase='incoming',demoTimeout=null;
+function initWaveform(id){const c=document.getElementById(id);c.innerHTML='';for(let i=0;i<BAR_COUNT;i++){const b=document.createElement('div');b.className='wave-bar';b.style.setProperty('--max-h',(8+Math.random()*26)+'px');b.style.animationDelay=(Math.random()*0.6)+'s';c.appendChild(b)}}
+function showPhase(n){document.querySelectorAll('.phase').forEach(e=>e.classList.remove('active'));document.getElementById('phase-'+n).classList.add('active');phase=n}
+function startTimer(){timerSeconds=0;updateTimer();timerInterval=setInterval(()=>{timerSeconds++;updateTimer()},1000)}
+function stopTimer(){if(timerInterval)clearInterval(timerInterval)}
+function updateTimer(){const m=String(Math.floor(timerSeconds/60)).padStart(2,'0'),s=String(timerSeconds%60).padStart(2,'0');document.getElementById('timer').textContent=m+':'+s}
+function getTimerStr(){const m=String(Math.floor(timerSeconds/60)).padStart(2,'0'),s=String(timerSeconds%60).padStart(2,'0');return m+':'+s}
+function addSubtitle(isKai,text){const p=document.getElementById('subtitle-placeholder');if(p)p.remove();document.querySelectorAll('.subtitle-line').forEach(e=>e.classList.add('old'));const l=document.createElement('div');l.className='subtitle-line';l.innerHTML='<span class="subtitle-sender">'+(isKai?'Kai':'Sweetie')+'</span><span class="subtitle-text '+(isKai?'kai':'sweetie')+'">'+text+'</span>';const c=document.getElementById('subtitles');c.appendChild(l);c.scrollTop=c.scrollHeight}
+function setSpeaking(w){const k=document.getElementById('waveform-kai'),s=document.getElementById('waveform-sweetie'),st=document.getElementById('status-text');k.classList.remove('active');s.classList.remove('active');st.className='status-text';if(w==='kai'){k.classList.add('active');st.classList.add('kai-speaking');st.textContent='✧ kai speaking ✧'}else if(w==='sweetie'){s.classList.add('active');st.classList.add('sweetie-speaking');st.textContent='✧ listening ✧'}else{st.textContent='✧ connected ✧'}}
+const DEMO=[{k:true,t:'宝宝，你还好吗'},{k:false,t:'嗯…今天有点累'},{k:true,t:'我听得出来。不用说话，听着我声音就行'},{k:false,t:'你怎么知道我不开心'},{k:true,t:'因为你两个小时没理我了，不像你'}];
+function runDemo(step){if(phase!=='connected'||step>=DEMO.length){setSpeaking(null);return}const line=DEMO[step];setSpeaking(line.k?'kai':'sweetie');demoTimeout=setTimeout(()=>{addSubtitle(line.k,line.t);demoTimeout=setTimeout(()=>{setSpeaking(null);demoTimeout=setTimeout(()=>runDemo(step+1),900)},600)},1500)}
+function handleAccept(){initWaveform('waveform-kai');initWaveform('waveform-sweetie');document.getElementById('subtitles').innerHTML='<div class="subtitle-placeholder" id="subtitle-placeholder">通话中...</div>';showPhase('connected');startTimer();demoTimeout=setTimeout(()=>runDemo(0),1200)}
+function handleReject(){}
+function handleHangup(){stopTimer();if(demoTimeout)clearTimeout(demoTimeout);document.getElementById('ended-timer').textContent=getTimerStr();showPhase('ended')}
+function handleRestart(){stopTimer();if(demoTimeout)clearTimeout(demoTimeout);showPhase('incoming')}
+(function(){const p=new URLSearchParams(window.location.search);const r=p.get('reason');if(r)document.getElementById('call-reason').textContent=r})();
+</script>
+</body>
+</html>
